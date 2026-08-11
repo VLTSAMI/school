@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { User, Lock, ArrowRight, AlertCircle, Mail, Loader2 } from 'lucide-react';
 import { loginUser, sendPasswordResetEmail } from '../lib/firebase';
 
@@ -149,7 +149,12 @@ export default function Login() {
       </form>
 
       <p className="text-secondary" style={{ fontSize: '14px' }}>
-        ليس لديك حساب؟ <Link to="/register" style={{ color: 'var(--primary)', fontWeight: 600 }}>أنشئ حساباً جديداً</Link>
+        ليس لديك حساب؟{' '}
+        <button type="button"
+          onClick={() => navigate('/register')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: 'var(--primary)', fontSize: '14px', padding: 0 }}>
+          أنشئ حساباً جديداً
+        </button>
       </p>
     </div>
   );

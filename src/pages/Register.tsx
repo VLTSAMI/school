@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { UserPlus, Mail, Lock, User, Key, ArrowRight, Loader2, Phone, GraduationCap } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { registerUser } from '../lib/firebase';
 
 const LEVELS = [
@@ -138,7 +138,12 @@ export default function Register() {
         </button>
 
         <p className="text-center text-secondary" style={{ fontSize: '14px' }}>
-          لديك حساب بالفعل؟ <Link to="/login" style={{ fontWeight: 'bold', color: 'var(--primary)' }}>سجل دخولك</Link>
+          لديك حساب بالفعل؟{' '}
+          <button type="button"
+            onClick={() => navigate('/login')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', color: 'var(--primary)', fontSize: '14px', padding: 0 }}>
+            سجل دخولك
+          </button>
         </p>
       </form>
     </div>
