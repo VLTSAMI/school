@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Lumina Learn</title>
+    <script>
+      var l = window.location;
+      var path = l.pathname;
+      if (path.includes('/school')) {
+        var subPath = path.substring(path.indexOf('/school') + 7);
+        l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/school/#' + (subPath || '/'));
+      } else {
+        l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/school/#/login');
+      }
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
