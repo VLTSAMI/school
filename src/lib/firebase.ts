@@ -76,7 +76,7 @@ export const registerUser = async (name: string, email: string, pass: string, ke
 export const logoutUser = async () => {
   await signOut(auth);
   localStorage.removeItem('userRole');
-  window.location.href = '/login';
+  window.location.hash = '#/login';
 };
 
 export const sendPasswordResetEmail = async (email: string) => {
