@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Edit2, UserX, Users, ChevronDown, ChevronUp, Plus, Check, Search, Trash2, PlusCircle, X } from 'lucide-react';
-import { subscribeToCollection, updateStudentName, enrollInClass, unenrollFromClass, auth, addClass, deleteClass } from '../lib/firebase';
+import { BookOpen, Edit2, UserX, Users, ChevronDown, ChevronUp, Plus, Check, Search, Trash2, PlusCircle, X, Key, Copy } from 'lucide-react';
+import { subscribeToCollection, updateStudentName, enrollInClass, unenrollFromClass, auth, addClass, deleteClass, generateSubjectKeyForClass } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
 export default function Classes() {
@@ -139,16 +139,47 @@ export default function Classes() {
         ))}
       </div>
 
-      {/* Class Info & Delete (Admin Only) */}
+      {/* Class Info, Key & Delete (Admin Only) */}
       {role === 'admin' && selectedTab !== 'all' && currentClassData && (
-        <div className="card flex items-center justify-between" style={{ background: 'rgba(255, 77, 77, 0.05)', border: '1px dashed rgba(255, 77, 77, 0.3)' }}>
-          <div className="flex-col">
-            <span className="text-secondary" style={{ fontSize: '12px' }}>إدارة مادة</span>
-            <h3 style={{ margin: 0, color: 'var(--error)' }}>{currentClassData.name}</h3>
+        <div className="card flex-col gap-sm" style={{ background: 'rgba(255, 95, 31, 0.05)', border: '1px solid rgba(255, 95, 31, 0.2)' }}>
+          <div className="flex justify-between items-center">
+            <div className="flex-col">
+              <span className="text-secondary" style={{ fontSize: '11px' }}>إدارة مادة</span>
+              <h3 style={{ margin: 0, color: 'var(--primary)' }}>{currentClassData.name}</h3>
+              <span className="text-secondary" style={{ fontSize: '11px' }}>
+                الأستاذ: {currentClassData.teacher || 'غير محدد'} {currentClassData.teacherId ? ' (مربوط ✅)' : ' (غير مربوط ⚠️)'}
+              </span>
+            </div>
+            <button className="btn-icon" style={{ background: 'rgba(255, 77, 77, 0.1)', color: 'var(--error)' }} onClick={() => handleDeleteClass(currentClassData.id, currentClassData.name)} title="حذف المادة">
+              <Trash2 size={18} />
+            </button>
           </div>
-          <button className="btn-icon" style={{ background: 'rgba(255, 77, 77, 0.1)', color: 'var(--error)' }} onClick={() => handleDeleteClass(currentClassData.id, currentClassData.name)}>
-            <Trash2 size={20} />
-          </button>
+
+          {/* Subject Key Box */}
+          <div className="flex items-center justify-between" style={{ padding: '10px 14px', background: 'rgba(0,0,0,0.3)', borderRadius: '14px', border: '1px solid rgba(255, 95, 31, 0.2)' }}>
+            <div className="flex items-center gap-sm">
+              <Key size={18} color="var(--primary)" />
+              <div className="flex-col">
+                <span className="text-secondary" style={{ fontSize: '10px' }}>مفتاح المادة للأستاذ (Subject Key):</span>
+                <span className="number font-en" style={{ fontSize: '15px', fontWeight: 700, letterSpacing: '2px', color: 'var(--primary)' }}>
+                  {currentClassData.subjectKey || 'لم يولد بعد'}
+                </span>
+              </div>
+            </div>
+            <button
+              className="btn btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '10px' }}
+              onClick={async () => {
+                const key = currentClassData.subjectKey || (await generateSubjectKeyForClass(currentClassData.id));
+                if (navigator.clipboard) {
+                  await navigator.clipboard.writeText(key);
+                }
+                alert(`رمز المادة: ${key} (تم النسخ)`);
+              }}
+            >
+              <Copy size={12} /> {currentClassData.subjectKey ? 'نسخ المفتاح' : 'توليد المفتاح'}
+            </button>
+          </div>
         </div>
       )}
 

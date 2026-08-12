@@ -83,10 +83,16 @@ export const sendPasswordResetEmail = async (email: string) => {
   await firebaseSendPasswordResetEmail(auth, email);
 };
 
-// --- CLASS MANAGEMENT (FOR ADMIN) ---
+// --- CLASS MANAGEMENT (FOR ADMIN & TEACHER) ---
+
+export const generateClassSubjectKey = () => {
+  const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `SUB-${randomStr}`;
+};
 
 export const addClass = async (name: string, teacher: string, teacherId: string, fee: number, schedule?: string) => {
   const classId = `class_${Date.now()}`;
+  const subjectKey = generateClassSubjectKey();
   await setDoc(doc(db, 'classes', classId), {
     id: classId,
     name,
@@ -94,8 +100,37 @@ export const addClass = async (name: string, teacher: string, teacherId: string,
     teacherId: teacherId || '',
     fee: Number(fee),
     schedule: schedule || '',
+    subjectKey,
     createdAt: new Date().toISOString()
   });
+  return { id: classId, subjectKey };
+};
+
+export const generateSubjectKeyForClass = async (classId: string) => {
+  const subjectKey = generateClassSubjectKey();
+  await updateDoc(doc(db, 'classes', classId), { subjectKey });
+  return subjectKey;
+};
+
+export const claimClassWithKey = async (teacherUid: string, key: string, teacherName?: string) => {
+  const cleanKey = key.trim().toUpperCase();
+  const q = query(collection(db, 'classes'), where('subjectKey', '==', cleanKey), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) {
+    throw new Error('رمز المادة غير صحيح أو غير موجود');
+  }
+  const classDoc = snap.docs[0];
+  const classData = classDoc.data();
+
+  const updatePayload: any = {
+    teacherId: teacherUid
+  };
+  if (teacherName && teacherName.trim()) {
+    updatePayload.teacher = teacherName.trim();
+  }
+
+  await updateDoc(doc(db, 'classes', classDoc.id), updatePayload);
+  return { id: classDoc.id, ...classData, ...updatePayload };
 };
 
 export const deleteClass = async (classId: string) => {
@@ -229,6 +264,18 @@ export const subscribeToCollection = (collectionName: string, callback: Function
       }
       return formattedItem;
     });
+    callback(data);
+  });
+};
+
+export const subscribeToTeacherClasses = (teacherUid: string, callback: Function) => {
+  if (!teacherUid) {
+    callback([]);
+    return () => {};
+  }
+  const q = query(collection(db, 'classes'), where('teacherId', '==', teacherUid));
+  return onSnapshot(q, (snapshot) => {
+    const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     callback(data);
   });
 };
