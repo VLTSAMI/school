@@ -26,9 +26,9 @@ export default function Register() {
     setError('');
     
     try {
-      if (!regKey) throw new Error("يرجى إدخال مفتاح التسجيل");
-      await registerUser(name, email, password, regKey.toUpperCase(), phone, level);
-      localStorage.setItem('userRole', 'student');
+      if (!regKey) throw new Error("يرجى إدخال مفتاح التسجيل أو رمز المادة");
+      const role = await registerUser(name, email, password, regKey.toUpperCase(), phone, level);
+      localStorage.setItem('userRole', role);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'حدث خطأ أثناء التسجيل');
@@ -44,7 +44,7 @@ export default function Register() {
           <UserPlus size={40} />
         </div>
         <h1 style={{ margin: 0 }}>إنشاء حساب جديد</h1>
-        <p className="text-secondary">انضم إلى المنظومة التعليمية</p>
+        <p className="text-secondary">انضم إلى المنظومة التعليمية (أستاذ / طالب)</p>
       </div>
 
       <form className="flex-col gap-md" onSubmit={handleRegister}>
@@ -54,18 +54,20 @@ export default function Register() {
           </div>
         )}
 
-        {/* Registration Key - Most important, shown first */}
+        {/* Registration Key - Subject Key or Student Key */}
         <div className="input-group">
-          <label className="input-label">مفتاح التسجيل (Key) *</label>
+          <label className="input-label">مفتاح التسجيل أو رمز المادة (Key) *</label>
           <div className="relative">
             <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)' }}>
               <Key size={20} />
             </span>
-            <input type="text" className="input-field w-full" placeholder="أدخل الكود المستلم من المدرسة"
+            <input type="text" className="input-field w-full font-en" placeholder="مثال للأستاذ: SUB-JCJSFZ"
               style={{ paddingRight: '48px', borderColor: 'var(--primary)', background: 'rgba(255, 95, 31, 0.05)' }}
               value={regKey} onChange={(e) => setRegKey(e.target.value)} required />
           </div>
-          <p style={{ fontSize: '10px', color: 'var(--on-surface-variant)', marginTop: '4px' }}>* يجب دفع رسوم الاشتراك للحصول على المفتاح</p>
+          <p style={{ fontSize: '11px', color: 'var(--on-surface-variant)', marginTop: '4px' }}>
+            * <b>للأستاذ:</b> أدخل رمز المادة (Subject Key) | <b>للطالب:</b> أدخل كود الاشتراك
+          </p>
         </div>
 
         <div className="input-group">

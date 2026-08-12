@@ -29,14 +29,25 @@ export const loginUser = async (email: string, pass: string) => {
 };
 
 export const registerUser = async (name: string, email: string, pass: string, key: string, phone?: string, level?: string) => {
+  const cleanKey = key.trim().toUpperCase();
   let keyIdToMarkAsUsed: string | null = null;
+  let detectedRole: 'student' | 'teacher' = 'student';
+  let targetClassDocId: string | null = null;
 
-  if (key !== '000000') {
-    const keyQuery = query(collection(db, 'keys'), where('key', '==', key), where('used', '==', false), limit(1));
+  // 1. Check if key is a Subject Key for a Class (Teacher registration)
+  const classKeyQuery = query(collection(db, 'classes'), where('subjectKey', '==', cleanKey), limit(1));
+  const classSnap = await getDocs(classKeyQuery);
+
+  if (!classSnap.empty) {
+    detectedRole = 'teacher';
+    targetClassDocId = classSnap.docs[0].id;
+  } else if (cleanKey !== '000000') {
+    // 2. Check if key is a Student Registration Key in 'keys' collection
+    const keyQuery = query(collection(db, 'keys'), where('key', '==', cleanKey), where('used', '==', false), limit(1));
     const keySnap = await getDocs(keyQuery);
     
     if (keySnap.empty) {
-      throw new Error("مفتاح التسجيل غير صحيح أو تم استخدامه مسبقاً");
+      throw new Error("مفتاح التسجيل غير صحيح (تأكد من إدخال رمز المادة للأستاذ أو كود التسجيل للطالب)");
     }
     keyIdToMarkAsUsed = keySnap.docs[0].id;
   }
@@ -52,25 +63,37 @@ export const registerUser = async (name: string, email: string, pass: string, ke
     });
   }
 
+  // Create document in 'users' collection with appropriate role
   await setDoc(doc(db, 'users', uid), {
     name,
     email,
-    role: 'student',
+    role: detectedRole,
     createdAt: new Date().toISOString()
   });
 
-  await setDoc(doc(db, 'students', uid), {
-    name,
-    email,
-    phone: phone || '',
-    level: level || '',
-    classIds: [], 
-    studentCode: `STU-${uid.substring(0, 4).toUpperCase()}`,
-    subjectAttendance: {},
-    joinedAt: new Date().toISOString()
-  });
-
-  return 'student';
+  if (detectedRole === 'teacher') {
+    // Link class to teacher automatically
+    if (targetClassDocId) {
+      await updateDoc(doc(db, 'classes', targetClassDocId), {
+        teacherId: uid,
+        teacher: name
+      });
+    }
+    return 'teacher';
+  } else {
+    // Create student document
+    await setDoc(doc(db, 'students', uid), {
+      name,
+      email,
+      phone: phone || '',
+      level: level || '',
+      classIds: [], 
+      studentCode: `STU-${uid.substring(0, 4).toUpperCase()}`,
+      subjectAttendance: {},
+      joinedAt: new Date().toISOString()
+    });
+    return 'student';
+  }
 };
 
 export const logoutUser = async () => {
