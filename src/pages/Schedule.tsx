@@ -30,12 +30,21 @@ export default function Schedule() {
     return () => { u1(); u2(); u3(); };
   }, []);
 
+  const getVisibleClasses = () => {
+    if (role === 'admin') return classes;
+    if (role === 'teacher') return classes.filter(c => c.teacherId === uid);
+    return [];
+  };
+
+  const selectableClasses = getVisibleClasses();
+
   const getVisibleSchedule = () => {
     if (role === 'admin') {
       return schedule.filter(e => e.day === selectedDay);
     }
     if (role === 'teacher') {
-      return schedule.filter(e => e.day === selectedDay && (e.teacherId === uid || !e.teacherId));
+      const myClassIds = selectableClasses.map(c => c.id);
+      return schedule.filter(e => e.day === selectedDay && (e.teacherId === uid || myClassIds.includes(e.classId)));
     }
     // Student: show only their enrolled classes
     const myData = students.find(s => s.id === uid);
@@ -47,15 +56,18 @@ export default function Schedule() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const selectedClass = classes.find(c => c.id === formClass);
-    if (!selectedClass) return;
+    const selectedClass = selectableClasses.find(c => c.id === formClass);
+    if (!selectedClass) {
+      alert('يرجى اختيار مادة من موادك المربوطة');
+      return;
+    }
     setActionLoading(true);
     try {
       await addScheduleEntry({
         classId: formClass,
         className: selectedClass.name,
         teacher: selectedClass.teacher,
-        teacherId: selectedClass.teacherId || '',
+        teacherId: selectedClass.teacherId || uid || '',
         day: formDay,
         time: formTime,
         room: formRoom,
@@ -69,9 +81,17 @@ export default function Schedule() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (entryId: string, entryTeacherId?: string, entryClassId?: string) => {
+    if (role === 'teacher') {
+      const isMyClass = selectableClasses.some(c => c.id === entryClassId);
+      if (entryTeacherId !== uid && !isMyClass) {
+        alert('يمكنك حذف حصص موادك فقط!');
+        return;
+      }
+    }
+
     if (!window.confirm('حذف هذه الحصة من الجدول؟')) return;
-    await deleteScheduleEntry(id);
+    await deleteScheduleEntry(entryId);
   };
 
   if (loading) return (
@@ -86,7 +106,7 @@ export default function Schedule() {
         <h2 className="flex items-center gap-sm" style={{ margin: 0 }}>
           <Calendar color="var(--primary)" /> جدول الحصص
         </h2>
-        {(role === 'admin' || role === 'teacher') && (
+        {(role === 'admin' || (role === 'teacher' && selectableClasses.length > 0)) && (
           <button
             className="btn btn-primary"
             style={{ padding: '8px 14px', borderRadius: '12px', fontSize: '13px' }}
@@ -117,7 +137,7 @@ export default function Schedule() {
           <div className="card flex-col items-center py-xl gap-md" style={{ border: '1px dashed var(--surface-container-highest)' }}>
             <Calendar size={48} style={{ opacity: 0.2 }} />
             <p className="text-secondary text-center" style={{ margin: 0, fontSize: '14px' }}>لا توجد حصص مجدولة ليوم {selectedDay}</p>
-            {(role === 'admin' || role === 'teacher') && (
+            {(role === 'admin' || (role === 'teacher' && selectableClasses.length > 0)) && (
               <button className="btn btn-secondary" style={{ fontSize: '13px', padding: '8px 20px', borderRadius: '12px' }} onClick={() => setShowModal(true)}>
                 <Plus size={14} /> إضافة حصة
               </button>
@@ -146,10 +166,10 @@ export default function Schedule() {
                   )}
                 </div>
               </div>
-              {/* Delete (admin/teacher) */}
-              {(role === 'admin' || role === 'teacher') && (
+              {/* Delete (admin / teacher for their own class) */}
+              {(role === 'admin' || (role === 'teacher' && (entry.teacherId === uid || selectableClasses.some(c => c.id === entry.classId)))) && (
                 <button className="btn-icon" style={{ width: '32px', height: '32px', color: 'var(--error)', background: 'rgba(255,77,77,0.08)' }}
-                  onClick={() => handleDelete(entry.id)}>
+                  onClick={() => handleDelete(entry.id, entry.teacherId, entry.classId)}>
                   <Trash2 size={14} />
                 </button>
               )}
@@ -168,12 +188,17 @@ export default function Schedule() {
             </div>
             <form onSubmit={handleAdd} className="flex-col gap-md">
               <div className="flex-col gap-xs">
-                <label style={{ fontSize: '12px' }}>المادة</label>
+                <label style={{ fontSize: '12px' }}>اختر المادة</label>
                 <select className="input-field w-full" value={formClass} onChange={e => setFormClass(e.target.value)} required
                   style={{ background: 'var(--surface)', padding: '12px 16px' }}>
                   <option value="">-- اختر المادة --</option>
-                  {classes.map(c => <option key={c.id} value={c.id}>{c.name} — أ. {c.teacher}</option>)}
+                  {selectableClasses.map(c => <option key={c.id} value={c.id}>{c.name} — أ. {c.teacher}</option>)}
                 </select>
+                {role === 'teacher' && selectableClasses.length === 0 && (
+                  <span style={{ fontSize: '11px', color: 'var(--error)', marginTop: '4px' }}>
+                    ⚠️ ليس لديك أي مادة مربوطة بحسابك حالياً. يرجى ربط مادتك أولاً بإدخال مفتاح المادة.
+                  </span>
+                )}
               </div>
               <div className="flex gap-sm">
                 <div className="flex-col gap-xs flex-1">
@@ -194,7 +219,7 @@ export default function Schedule() {
                 <input type="text" className="input-field w-full" placeholder="مثال: 3" value={formRoom}
                   onChange={e => setFormRoom(e.target.value)} />
               </div>
-              <button type="submit" className="btn btn-primary w-full" disabled={actionLoading}>
+              <button type="submit" className="btn btn-primary w-full" disabled={actionLoading || selectableClasses.length === 0}>
                 {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
                 إضافة للجدول
               </button>
